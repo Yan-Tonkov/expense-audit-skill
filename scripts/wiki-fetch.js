@@ -13,56 +13,32 @@
  *   https://agentsim.online/wiki/product/product-overview
  */
 
-const { toUrl, fetchUrl, htmlToMarkdown, decodeEntities } = require('./wiki-lib');
-
-function extract(html) {
-  const titleMatch = html.match(/<title>([\s\S]*?)<\/title>/);
-  const title = titleMatch ? decodeEntities(titleMatch[1]).replace(/\s*—\s*Wiki$/, '') : null;
-
-  const metaMatch = html.match(/<div class="wiki-meta">([\s\S]*?)<\/div>/);
-  const meta = {};
-  if (metaMatch) {
-    const re = /<span class="wiki-meta-label">([^<]+)<\/span>\s*([^<]*)/g;
-    let m;
-    while ((m = re.exec(metaMatch[1]))) {
-      meta[decodeEntities(m[1]).replace(/:$/, '')] = decodeEntities(m[2]).trim();
-    }
-  }
-
-  // Внутри .wiki-content не бывает вложенных <div>, поэтому первый
-  // закрывающий </div> после открывающего тега — конец блока контента.
-  const contentMatch = html.match(/<div class="wiki-content">([\s\S]*?)<\/div>/);
-  const contentHtml = contentMatch ? contentMatch[1] : null;
-
-  return { title, meta, contentHtml };
-}
+const { toUrl, fetchArticle } = require('./wiki-lib');
 
 async function fetchOne(arg) {
   const url = toUrl(arg);
-  let html;
+  let article;
   try {
-    html = await fetchUrl(url);
+    article = await fetchArticle(arg);
   } catch (err) {
     return `\n---\n### ⚠ Не удалось загрузить ${url}\n${err.message}\n`;
   }
 
-  const { title, meta, contentHtml } = extract(html);
-  if (!contentHtml) {
+  if (!article.markdown) {
     return `\n---\n### ⚠ Не удалось распознать содержимое страницы ${url}\n(возможно, это страница-листинг, а не статья — попробуйте /wiki/<раздел>/pages)\n`;
   }
 
-  const md = htmlToMarkdown(contentHtml);
-  const metaLine = Object.entries(meta)
+  const metaLine = Object.entries(article.meta)
     .map(([k, v]) => `**${k}:** ${v}`)
     .join(' · ');
 
   return [
     `\n---`,
-    `### Источник: ${title || url}`,
+    `### Источник: ${article.title || url}`,
     `URL: ${url}`,
     metaLine ? metaLine : null,
     '',
-    md,
+    article.markdown,
   ].filter((x) => x !== null).join('\n');
 }
 
