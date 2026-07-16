@@ -2,8 +2,8 @@
 /**
  * sheets-build-index.js — обходит 10 Google Sheets менеджеров (список — в
  * sheets-lib.js/SOURCES, каждая таблица в своём формате) и собирает
- * sheets-index.md в корне репозитория: заголовок, ссылка (с gid), колонки
- * и число строк для каждой таблицы.
+ * sheets-index.md в корне репозитория: заголовок, ссылка (с gid), колонки,
+ * число строк и список названий компаний/клиентов для каждой таблицы.
  *
  * В отличие от wiki-build-index.js, единица индекса здесь — целая таблица
  * (их всего 10), а не отдельная строка внутри неё: строки ищутся уже на
@@ -16,17 +16,28 @@
 
 const fs = require('fs');
 const path = require('path');
-const { SOURCES, fetchCsvSource, parseCsv, sheetUrl } = require('./sheets-lib');
+const { SOURCES, fetchCsvSource, parseCsv, sheetUrl, extractCompanyNames } = require('./sheets-lib');
 
 const OUT_PATH = path.join(__dirname, '..', 'sheets-index.md');
+
+/** Уникальные названия компаний, отсортированные по алфавиту, с пометкой (×N), если строк несколько */
+function summarizeCompanies(names) {
+  const counts = new Map();
+  for (const name of names) counts.set(name, (counts.get(name) || 0) + 1);
+  return [...counts.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0], 'ru'))
+    .map(([name, n]) => (n > 1 ? `${name} (×${n})` : name));
+}
 
 async function buildEntry(id, n) {
   console.error(`  Таблица ${n} (${id})...`);
   const { gid, title, csv } = await fetchCsvSource(id);
   const rows = parseCsv(csv);
   const headers = rows[0] || [];
-  const dataRowCount = Math.max(rows.length - 1, 0);
-  return { n, id, gid, title, headers, dataRowCount };
+  const dataRows = rows.slice(1);
+  const dataRowCount = dataRows.length;
+  const companyNames = extractCompanyNames(headers, dataRows);
+  return { n, id, gid, title, headers, dataRowCount, companyNames };
 }
 
 function render(entries) {
@@ -49,6 +60,9 @@ function render(entries) {
       `- URL: ${sheetUrl(e.id, e.gid)}`,
       `- Строк данных: ${e.dataRowCount}`,
       `- Колонки: ${e.headers.join(', ')}`,
+      e.companyNames === null
+        ? `- Компании: не удалось определить колонку с названием компании — открой таблицу целиком`
+        : `- Компании: ${summarizeCompanies(e.companyNames).join(', ')}`,
       '',
     );
   }
@@ -72,6 +86,7 @@ function render(entries) {
         title: `(не удалось загрузить: ${SOURCES[i]})`,
         headers: [],
         dataRowCount: 0,
+        companyNames: null,
       });
     }
   }

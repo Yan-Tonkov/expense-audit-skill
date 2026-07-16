@@ -136,4 +136,33 @@ function sheetUrl(id, gid) {
   return `https://docs.google.com/spreadsheets/d/${id}/edit?gid=${gid}`;
 }
 
-module.exports = { SOURCES, get, discoverGid, fetchCsvSource, parseCsv, sheetUrl };
+// Каждая таблица менеджера в своём формате, но название компании/клиента
+// почти всегда лежит в одной из этих колонок — приоритет сверху вниз.
+const COMPANY_COLUMN_CANDIDATES = ['Компания', 'Организация', 'Клиент', 'Название', 'Предприятие'];
+
+/** Находит индекс колонки с названием компании по списку известных заголовков, иначе null */
+function findCompanyColumn(headers) {
+  for (const name of COMPANY_COLUMN_CANDIDATES) {
+    const i = headers.findIndex((h) => h.trim().toLowerCase() === name.toLowerCase());
+    if (i !== -1) return i;
+  }
+  return null;
+}
+
+/** Список названий компаний из данных таблицы (в порядке строк, как есть — включая повторы) */
+function extractCompanyNames(headers, dataRows) {
+  const col = findCompanyColumn(headers);
+  if (col === null) return null;
+  return dataRows.map((row) => (row[col] || '').trim()).filter(Boolean);
+}
+
+module.exports = {
+  SOURCES,
+  get,
+  discoverGid,
+  fetchCsvSource,
+  parseCsv,
+  sheetUrl,
+  findCompanyColumn,
+  extractCompanyNames,
+};
