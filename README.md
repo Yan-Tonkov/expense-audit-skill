@@ -54,3 +54,37 @@ node scripts/expense-audit.js SHEET_ID
 - gws CLI (`npm install -g @googleworkspace/cli`)
 - Google Sheets API включён в GCP проекте
 - `gws auth login` выполнен
+
+---
+
+# wiki-search
+
+Claude Code skill для ответов на вопросы по корпоративной вики [agentsim.online/wiki](https://agentsim.online/wiki/).
+
+## Что делает
+
+У вики нет встроенного поиска, только 7 разделов (Продукт, Продажи, Маркетинг, HR, Финансы, Техотдел, Общее) со списками статей. Скилл сначала строит индекс всех статей (заголовок + ссылка), даёт Claude выбрать релевантные по смыслу вопроса, затем загружает их полный текст и отвечает со ссылками на источники.
+
+## Использование
+
+### Как Claude Code skill
+
+```
+/wiki-search Какие тарифы актуальны для Enterprise-клиентов?
+```
+
+### Напрямую из терминала
+
+```bash
+# Индекс всех статей (кэш на 24ч в .wiki-index-cache.json)
+node scripts/wiki-index.js
+node scripts/wiki-index.js --refresh   # принудительно обновить
+
+# Полный текст одной или нескольких статей
+node scripts/wiki-fetch.js product/product-overview
+node scripts/wiki-fetch.js product/product-overview sales/pricing-current
+```
+
+## Требования
+
+- Node.js 18+ (используются только встроенные модули, зависимостей нет)
