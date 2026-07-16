@@ -82,8 +82,8 @@ node scripts/expense-audit.js SHEET_ID
 
 ```bash
 # Проверить, не устарел ли индекс (порог по умолчанию — 7 дней)
-node scripts/wiki-index-status.js
-node scripts/wiki-index-status.js --max-age-days 3
+node scripts/index-status.js --file wiki-index.md
+node scripts/index-status.js --file wiki-index.md --max-age-days 3
 
 # Пересобрать wiki-index.md (обход всех 7 разделов + описания)
 node scripts/wiki-build-index.js
